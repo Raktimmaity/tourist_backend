@@ -1,14 +1,40 @@
 // server/routes/touristPlaceRoutes.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const TouristPlace = require('../models/TouristPlace');
+const TouristPlace = require("../models/TouristPlace");
 const { verifyToken } = require("../middleware/authMiddleware");
 
 // POST /api/tourist-places/add — Add a new tourist place
-router.post('/add', async (req, res) => {
-  const { placeName, location, languagesSpoken, tourTime, description, price, duration, addedBy, date, status, videoUrl, imageUrl } = req.body;
+router.post("/add", async (req, res) => {
+  const {
+    placeName,
+    location,
+    languagesSpoken,
+    tourTime,
+    description,
+    price,
+    duration,
+    addedBy,
+    date,
+    status,
+    videoUrl,
+    imageUrl,
+  } = req.body;
 
-  if (!placeName || !location || !languagesSpoken || !tourTime || !description || !price || !duration || !addedBy || !date || !status || !videoUrl || !imageUrl) {
+  if (
+    !placeName ||
+    !location ||
+    !languagesSpoken ||
+    !tourTime ||
+    !description ||
+    !price ||
+    !duration ||
+    !addedBy ||
+    !date ||
+    !status ||
+    !videoUrl ||
+    !imageUrl
+  ) {
     return res.status(400).json({ error: "All fields are required." });
   }
 
@@ -25,7 +51,7 @@ router.post('/add', async (req, res) => {
       date,
       status,
       videoUrl,
-      imageUrl
+      imageUrl,
     });
 
     const savedPlace = await newPlace.save();
@@ -79,65 +105,74 @@ router.get("/places", async (req, res) => {
 //   }
 // });
 
-
-router.put('/places/:id', async (req, res) => {
+router.put("/places/:id", async (req, res) => {
   try {
-    const { id } = req.params; // Get place ID from URL params
-    const updatedPlace = req.body; // Get updated place details from body
+    const { id } = req.params;
+    const updatedFields = { ...req.body };
 
-    // Find place by ID and update with new data, return the updated doc
-    const place = await TouristPlace.findByIdAndUpdate(id, updatedPlace, { new: true });
+    // Ensure 'date' is converted to a proper Date object if it's a string
+    if (updatedFields.date) {
+      const parsedDate = new Date(updatedFields.date);
+      if (!isNaN(parsedDate.getTime())) {
+        updatedFields.date = parsedDate;
+      } else {
+        return res.status(400).json({ message: "Invalid date format." });
+      }
+    }
 
-    if (!place) {
+    const updatedPlace = await TouristPlace.findByIdAndUpdate(id, updatedFields, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedPlace) {
       return res.status(404).json({ message: "Tourist place not found." });
     }
 
-    res.status(200).json(place);
+    res.status(200).json(updatedPlace);
   } catch (error) {
-    console.error(error);
+    console.error("Error updating tourist place:", error);
     res.status(500).json({ message: "Server error. Could not update the place." });
   }
 });
 
 // GET /api/bookings/:bookingId/video
-router.get('/:bookingId/video', async (req, res) => {
+router.get("/:bookingId/video", async (req, res) => {
   try {
     const { bookingId } = req.params;
-    
+
     // Find the booking first
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ message: "Booking not found" });
     }
 
     // Find the related tourist place using tourId
     const place = await TouristPlace.findById(booking.tourId);
     if (!place) {
-      return res.status(404).json({ message: 'Tourist place not found' });
+      return res.status(404).json({ message: "Tourist place not found" });
     }
 
     // Return the videoUrl field
     res.json({ videoUrl: place.videoUrl });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: "Server error" });
   }
 });
 
-
 // DELETE /api/places/:id - Delete a place by ID
-router.delete('/places/:id', async (req, res) => {
+router.delete("/places/:id", async (req, res) => {
   try {
     const place = await TouristPlace.findByIdAndDelete(req.params.id);
     if (!place) {
-      return res.status(404).json({ message: 'Place not found' });
+      return res.status(404).json({ message: "Place not found" });
     }
-    res.status(200).json({ message: 'Place deleted successfully' });
+    res.status(200).json({ message: "Place deleted successfully" });
   } catch (error) {
-    console.error('Error deleting place:', error);
-    res.status(500).json({ message: 'Server error while deleting place' });
+    console.error("Error deleting place:", error);
+    res.status(500).json({ message: "Server error while deleting place" });
   }
 });
-
 
 module.exports = router;
